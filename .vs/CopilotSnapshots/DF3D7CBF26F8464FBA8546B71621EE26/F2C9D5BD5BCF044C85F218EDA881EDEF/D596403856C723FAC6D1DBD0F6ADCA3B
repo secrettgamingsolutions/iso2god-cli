@@ -1,0 +1,49 @@
+﻿using System;
+using Chilano.Iso2God;
+
+namespace Iso2GodTest
+{
+    class TestCsvParsing
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("=== Test CSV Parsing ===");
+            Console.WriteLine();
+            
+            // Test avec le TitleID de Zuma's Revenge
+            string testTitleId = "4541099F";
+            
+            Console.WriteLine("Testing CSV lookup for TitleID: " + testTitleId);
+            string result = GameListCsvReader.LookupTitleByTitleId(testTitleId, IsoDetailsPlatform.Xbox360);
+            
+            if (!string.IsNullOrEmpty(result))
+            {
+                Console.WriteLine("SUCCESS: Found title: " + result);
+            }
+            else
+            {
+                Console.WriteLine("FAILURE: Title not found in CSV");
+            }
+            
+            Console.WriteLine();
+            Console.WriteLine("=== Test XboxUnity API ===");
+            Console.WriteLine();
+            
+            Console.WriteLine("Testing API lookup for TitleID: " + testTitleId);
+            string apiResult = XboxUnityScraper.LookupTitleByTitleId(testTitleId);
+            
+            if (!string.IsNullOrEmpty(apiResult))
+            {
+                Console.WriteLine("SUCCESS: Found title: " + apiResult);
+            }
+            else
+            {
+                Console.WriteLine("INFO: API lookup failed (timeout or not found)");
+            }
+            
+            Console.WriteLine();
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
+        }
+    }
+}

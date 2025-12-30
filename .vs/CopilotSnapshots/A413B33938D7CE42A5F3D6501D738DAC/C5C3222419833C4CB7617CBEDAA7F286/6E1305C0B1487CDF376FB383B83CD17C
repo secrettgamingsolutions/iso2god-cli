@@ -1,0 +1,103 @@
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Text;
+
+namespace Chilano.Iso2God
+{
+    /// <summary>
+    /// Service to lookup Xbox 360 game titles by TitleID using online APIs
+    /// </summary>
+    internal class TitleLookupService
+    {
+        /// <summary>
+        /// Attempts to lookup the game title from TitleID using an online API
+        /// </summary>
+        /// <param name="titleId">8-character hex TitleID (e.g., "4541099F")</param>
+        /// <returns>Game title if found, null otherwise</returns>
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            try
+            {
+                Console.WriteLine("+ Attempting online lookup for TitleID: " + titleId);
+                
+                // Try xboxunity.net API (free, no auth required)
+                string url = "https://xboxunity.net/api/public/title/" + titleId;
+                
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.UserAgent = "Iso2God-CLI/1.0";
+                request.Timeout = 5000; // 5 second timeout
+                
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                        {
+                            string json = reader.ReadToEnd();
+                            
+                            // Simple JSON parsing without dependencies
+                            // Look for "title":"Game Name"
+                            string titlePattern = "\"title\":\"";
+                            int titleStart = json.IndexOf(titlePattern);
+                            
+                            if (titleStart >= 0)
+                            {
+                                titleStart += titlePattern.Length;
+                                int titleEnd = json.IndexOf("\"", titleStart);
+                                
+                                if (titleEnd > titleStart)
+                                {
+                                    string title = json.Substring(titleStart, titleEnd - titleStart);
+                                    
+                                    // Unescape JSON string
+                                    title = title.Replace("\\\"", "\"");
+                                    title = title.Replace("\\\\", "\\");
+                                    
+                                    if (!string.IsNullOrEmpty(title))
+                                    {
+                                        Console.WriteLine("+ Found title online: " + title);
+                                        return title;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                Console.WriteLine("- Online lookup failed (WebException): " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- Online lookup failed: " + ex.Message);
+            }
+
+            // Fallback: Try alternate API or return null
+            return TryAlternateApi(titleId);
+        }
+
+        private static string TryAlternateApi(string titleId)
+        {
+            try
+            {
+                // Fallback to xboxmarketplace.com scraping or other API
+                // For now, return null - can be extended later
+                Console.WriteLine("- No alternate API available, using TitleID as fallback");
+            }
+            catch (Exception)
+            {
+                // Silently fail
+            }
+            
+            return null;
+        }
+    }
+}

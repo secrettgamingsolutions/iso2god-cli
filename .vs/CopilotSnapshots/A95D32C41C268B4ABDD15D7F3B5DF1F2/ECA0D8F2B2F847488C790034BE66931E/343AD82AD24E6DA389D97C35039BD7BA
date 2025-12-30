@@ -1,0 +1,88 @@
+﻿iso2god-cli
+=========
+
+iso2god-cli is an implementation of Iso2god without GUI.
+Use it for convert your Xbox360 iso to GOD files on Windows or Linux.
+
+![screen](http://i.imgur.com/OQ1l61P.png?1)
+
+## Features
+
+- Converts Xbox 360 ISO files to Games on Demand (GOD) format
+- Automatic game title lookup via XboxUnity API
+- Offline fallback using local CSV databases
+- Cross-platform support (Windows/Linux with Mono)
+
+## Requirements
+
+- .NET Framework 2.0 or higher (Windows)
+- Mono (Linux)
+- Internet connection (optional, for online title lookup)
+
+## Installation
+
+### Compile from source
+
+**Windows:**
+```bash
+msbuild Iso2God.sln /p:Configuration=Release /p:Platform=x86
+```
+
+**Linux:**
+```bash
+msbuild Iso2God.sln /p:Configuration=Release /p:Platform=x86
+```
+
+The compiled executable will be in `bin\Release\Iso2God.exe`
+
+## Usage
+
+```bash
+Iso2God.exe <source iso> <destination folder>
+```
+
+**Example (Windows):**
+```bash
+Iso2God.exe "C:\Games\MyGame.iso" "C:\Output\"
+```
+
+**Example (Linux with Mono):**
+```bash
+mono Iso2God.exe "/path/to/game.iso" "/path/to/output/"
+```
+
+## Game Title Lookup
+
+The application automatically retrieves game titles using a two-tier system:
+
+1. **Online Lookup**: Uses the [XboxUnity-Scraper](https://github.com/UncreativeXenon/XboxUnity-Scraper) API to fetch game titles
+2. **Offline Fallback**: If online lookup fails (no internet connection, timeout, or game not found), it searches local CSV databases:
+   - `gamelist_xbox360.csv` - Xbox 360 titles
+   - `gamelist_xbox.csv` - Original Xbox titles
+
+The CSV files should be placed in the same directory as the executable.
+
+### CSV Format
+
+**gamelist_xbox360.csv:**
+```
+title_id	media_id	title_name
+584111F1	12345678	Example Game
+```
+
+**gamelist_xbox.csv:**
+```
+title_id	xbe_md5	title_name
+4541000D	053432B5...	Example Xbox Game
+```
+
+## Credits
+
+- Original Iso2God by Chilano
+- CLI port by Elie CHARRA <elie.charra@gmail.com>
+- XboxUnity data from [XboxUnity.net](http://xboxunity.net/)
+- Game title lookup integration using [XboxUnity-Scraper](https://github.com/UncreativeXenon/XboxUnity-Scraper)
+
+## Notes
+
+I know the code is very ugly, if someone wanna optimise it, it would be a pleasure :-)

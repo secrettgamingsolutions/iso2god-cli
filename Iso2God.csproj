@@ -40,9 +40,13 @@
     <Reference Include="System.Management" />
     <Reference Include="System.Design" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Chilano\Iso2God\TitleLookupService.cs" />
+    <Compile Include="Chilano\Iso2God\XboxUnityScraper.cs" />
+    <Compile Include="Chilano\Iso2God\GameListCsvReader.cs" />
     <Compile Include="Chilano\Xbox360\Iso\GDF.cs">
       <SubType>Code</SubType>
     </Compile>
+    <None Include="BUGFIX_TITRE_LOOKUP.md" />
     <None Include="Chilano\Xbox360\Iso\GDF.cs.old" />
     <Compile Include="Chilano\Iso2God\IsoEntry.cs" />
     <Compile Include="Chilano\Iso2God\IsoEntryPlatform.cs" />

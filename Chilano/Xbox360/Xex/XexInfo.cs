@@ -7,12 +7,14 @@
     public class XexInfo : IDisposable
     {
         private CBinaryReader br;
-       public XexHeader Header;
+        public XexHeader Header;
         private MemoryStream ms;
+        private byte[] xexData;
 
         public XexInfo(byte[] Xex)
         {
-           ms = new MemoryStream(Xex);
+            xexData = Xex;
+            ms = new MemoryStream(Xex);
             br = new CBinaryReader(EndianType.BigEndian, ms);
             Header = new XexHeader(br);
             foreach (XexInfoField field in Header.Values)
@@ -22,6 +24,22 @@
                     field.Parse(br);
                 }
             }
+        }
+
+        public byte[] GetResourceData()
+        {
+            if (Header.ContainsKey(XexInfoFields.ResourceInfo))
+            {
+                XexResourceInfo resourceInfo = (XexResourceInfo)Header[XexInfoFields.ResourceInfo];
+                Console.WriteLine("+ Extracting XEX resources...");
+                
+                return resourceInfo.ExtractResource(xexData);
+            }
+            else
+            {
+                Console.WriteLine("- ResourceInfo key not found in XEX header");
+            }
+            return new byte[0];
         }
 
         public void Dispose()

@@ -1,0 +1,230 @@
+﻿using Chilano.Xbox360.Xdbf;
+
+namespace Chilano.Iso2God
+{
+    using Xbox360.IO;
+    using Xbox360.Iso;
+    using Xbox360.Xex;
+    using System;
+    using System.ComponentModel;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Text;
+
+    internal class IsoDetails
+    {
+        private IsoDetailsArgs args;
+        private FileStream f;
+        private GDF iso;
+
+        public IsoDetails(IsoDetailsArgs arguments)
+        {
+            args = arguments;
+        }
+
+        public IsoDetailsResults IsoDetails_DoWork()
+        {
+            if (openIso())
+            {
+                if (iso.Exists("default.xex"))
+                {
+                    return readXex();
+                }
+                throw new Exception("Could not locate default.xex.");
+            }
+            throw new Exception("Could not open iso file.");
+        }
+
+        private bool openIso()
+        {
+            try
+            {
+                f = new FileStream(args.PathISO, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                iso = new GDF(f);
+            }
+            catch (IOException exception)
+            {
+                Console.WriteLine("- Failed to open ISO image. Reason:\n\n" + exception.Message);
+                return false;
+            }
+            catch (Exception exception2)
+            {
+                Console.WriteLine("- Unhandled exception occured when opening ISO image. Reason:\n\n" + exception2.Message);
+                return false;
+            }
+            return true;
+        }
+
+        private byte[] SearchXdbfInBuffer(byte[] buffer)
+        {
+            Console.WriteLine("+ Searching for XDBF signature in XEX data (" + buffer.Length + " bytes)...");
+            
+            byte[] xdbfSignature = new byte[] { 0x58, 0x44, 0x42, 0x46 }; // "XDBF"
+            
+            for (int i = 0; i < buffer.Length - 4; i++)
+            {
+                if (buffer[i] == xdbfSignature[0] &&
+                    buffer[i + 1] == xdbfSignature[1] &&
+                    buffer[i + 2] == xdbfSignature[2] &&
+                    buffer[i + 3] == xdbfSignature[3])
+                {
+                    Console.WriteLine("+ Found XDBF signature at offset: 0x" + i.ToString("X") + " (" + i + " bytes into XEX)");
+                    
+                    // Extract XDBF data from this position to end of buffer
+                    int remainingSize = buffer.Length - i;
+                    byte[] xdbfData = new byte[remainingSize];
+                    Array.Copy(buffer, i, xdbfData, 0, remainingSize);
+                    
+                    Console.WriteLine("+ Extracted " + xdbfData.Length + " bytes starting from XDBF signature");
+                    return xdbfData;
+                }
+                
+                // Report progress every 1MB
+                if (i > 0 && i % (1024 * 1024) == 0)
+                {
+                    Console.WriteLine("  Scanned: " + (i / (1024 * 1024)) + " MB of XEX...");
+                }
+            }
+            
+            Console.WriteLine("- XDBF signature not found in XEX data");
+            return null;
+        }
+
+        private string ExtractGameTitleFromXdbf(byte[] xdbfData)
+        {
+            if (xdbfData == null || xdbfData.Length == 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                Console.WriteLine("+ Parsing XDBF data (size: " + xdbfData.Length + " bytes)");
+                Xdbf xdbf = new Xdbf(xdbfData);
+
+                // Try method 1: Resource ID 1, Type 3 (TitleInfo) - ORIGINAL METHOD
+                try
+                {
+                    byte[] titleResource = xdbf.GetResource(1u, 3);
+                    if (titleResource != null && titleResource.Length > 18)
+                    {
+                        Console.WriteLine("+ Found TitleInfo resource (type 3, size: " + titleResource.Length + " bytes)");
+                        MemoryStream stream = new MemoryStream(titleResource);
+                        stream.Seek(17L, SeekOrigin.Begin);
+                        int count = stream.ReadByte();
+                        if (count > 0 && count < 256 && titleResource.Length >= (18 + count))
+                        {
+                            string name = Encoding.UTF8.GetString(titleResource, 18, count);
+                            stream.Close();
+                            if (!string.IsNullOrEmpty(name.Trim()))
+                            {
+                                Console.WriteLine("+ Extracted title (UTF-8): " + name);
+                                return name.Trim();
+                            }
+                        }
+                        stream.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("- Failed method 1 (TitleInfo UTF-8): " + ex.Message);
+                }
+
+                // Try method 2: Resource ID 1, Type 0 (Standard)
+                try
+                {
+                    byte[] standardResource = xdbf.GetResource(1u, 0);
+                    if (standardResource != null && standardResource.Length > 18)
+                    {
+                        Console.WriteLine("+ Found Standard resource (type 0, size: " + standardResource.Length + " bytes)");
+                        MemoryStream stream2 = new MemoryStream(standardResource);
+                        stream2.Seek(17L, SeekOrigin.Begin);
+                        int count2 = stream2.ReadByte();
+                        if (count2 > 0 && count2 < 256 && standardResource.Length >= (18 + count2))
+                        {
+                            string name = Encoding.UTF8.GetString(standardResource, 18, count2);
+                            stream2.Close();
+                            if (!string.IsNullOrEmpty(name.Trim()))
+                            {
+                                Console.WriteLine("+ Extracted title (UTF-8): " + name);
+                                return name.Trim();
+                            }
+                        }
+                        stream2.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("- Failed method 2 (Standard UTF-8): " + ex.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- Exception parsing XDBF: " + ex.Message);
+            }
+            
+            return null;
+        }
+
+        private IsoDetailsResults readXex()
+        {
+            IsoDetailsResults results = null;
+            byte[] bytes = null;
+
+            Console.WriteLine("+ Locating default.xex...");
+            try
+            {
+                bytes = iso.GetFile("default.xex");
+                Console.WriteLine("+ Extracting default.xex...");
+                if ((bytes == null) || (bytes.Length == 0))
+                {
+                    throw new Exception("Couldn't locate default.xex. Please check this ISO is valid.");
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new Exception("A problem occured when reading the contents of the ISO image.\n\nPlease ensure this is a valid Xbox 360 ISO by running it through ABGX360.\n\n" + exception.Message);
+            }
+
+            Console.WriteLine("+ Found! Reading default.xex...");
+            using (XexInfo info = new XexInfo(bytes))
+            {
+                if (!info.IsValid)
+                {
+                    throw new Exception("Default.xex is not valid.");
+                }
+
+                if (info.Header.ContainsKey(XexInfoFields.ExecutionInfo))
+                {
+                    XexExecutionInfo info2 = (XexExecutionInfo)info.Header[XexInfoFields.ExecutionInfo];
+                    results = new IsoDetailsResults("", DataConversion.BytesToHexString(info2.TitleID), DataConversion.BytesToHexString(info2.MediaID), info2.Platform.ToString(), info2.ExecutableType.ToString(), info2.DiscNumber.ToString(), info2.DiscCount.ToString());
+                }
+
+                Console.WriteLine("+ Scanning XEX for embedded XDBF data...");
+                byte[] xdbfData = SearchXdbfInBuffer(bytes);
+
+                string gameName = null;
+                if (xdbfData != null && xdbfData.Length > 0)
+                {
+                    gameName = ExtractGameTitleFromXdbf(xdbfData);
+                }
+
+                if (string.IsNullOrEmpty(gameName))
+                {
+                    Console.WriteLine("- Could not extract game title from XEX (XEX may be compressed)");
+                    Console.WriteLine("+ Using TitleID as fallback: " + results.TitleID);
+                    results.Name = results.TitleID;
+                }
+                else
+                {
+                    results.Name = gameName;
+                }
+
+                Console.WriteLine("+ Final game title: " + results.Name);
+            }
+
+            return results;
+        }
+    }
+}
+

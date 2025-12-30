@@ -1,0 +1,120 @@
+﻿namespace Chilano.Iso2God
+{
+    using System;
+    using System.IO;
+    using System.Reflection;
+
+    internal class GameListCsvReader
+    {
+        private static string GetExecutableDirectory()
+        {
+            return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        }
+
+        public static string LookupTitleByTitleId(string titleId, IsoDetailsPlatform platform)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            string csvFileName = platform == IsoDetailsPlatform.Xbox360 
+                ? "gamelist_xbox360.csv" 
+                : "gamelist_xbox.csv";
+
+            string csvPath = Path.Combine(GetExecutableDirectory(), csvFileName);
+
+            Console.WriteLine("+ Looking up TitleID " + titleId + " in CSV: " + csvPath);
+
+            if (!File.Exists(csvPath))
+            {
+                Console.WriteLine("+ ✗ CSV file not found: " + csvPath);
+                return null;
+            }
+
+            try
+            {
+                int lineNumber = 0;
+                using (StreamReader reader = new StreamReader(csvPath))
+                {
+                    // Skip header line
+                    string headerLine = reader.ReadLine();
+                    lineNumber++;
+                    
+                    if (headerLine == null)
+                    {
+                        Console.WriteLine("+ ✗ CSV file is empty");
+                        return null;
+                    }
+                    
+                    Console.WriteLine("+ CSV header: " + headerLine);
+
+                    string line;
+                    int totalLines = 0;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        lineNumber++;
+                        totalLines++;
+                        
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+
+                        // Remove ALL surrounding quotes (both single " and full wrapping)
+                        line = line.Trim();
+                        
+                        // Remove wrapping quotes: "xxxx" -> xxxx
+                        if (line.StartsWith("\"") && line.EndsWith("\"") && line.Length > 1)
+                        {
+                            line = line.Substring(1, line.Length - 2);
+                        }
+
+                        // Parse tab-delimited format: TitleID\tMediaID\tName
+                        string[] parts = line.Split('\t');
+                        
+                        if (parts.Length < 3)
+                        {
+                            // Try alternate parsing if tabs not found
+                            continue;
+                        }
+
+                        // Extract fields and trim any remaining quotes/whitespace
+                        string csvTitleId = parts[0].Trim().Trim('"');
+                        string titleName = parts[2].Trim().Trim('"');
+
+                        // Debug first few lines
+                        if (totalLines <= 5)
+                        {
+                            Console.WriteLine("  Line " + lineNumber + ": TitleID=[" + csvTitleId + "] Name=[" + titleName + "]");
+                        }
+
+                        // Match TitleID (case-insensitive)
+                        if (csvTitleId.Equals(titleId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine("+ ✓ Found match in CSV at line " + lineNumber);
+                            Console.WriteLine("  CSV TitleID: " + csvTitleId);
+                            Console.WriteLine("  Game Name: " + titleName);
+                            
+                            return string.IsNullOrEmpty(titleName) ? null : titleName;
+                        }
+                    }
+                    
+                    Console.WriteLine("+ ✗ TitleID not found in CSV (" + totalLines + " lines searched)");
+                }
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine("+ ✗ CSV read error (IOException): " + ex.Message);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("+ ✗ CSV read error: " + ex.Message);
+                return null;
+            }
+
+            return null;
+        }
+    }
+}

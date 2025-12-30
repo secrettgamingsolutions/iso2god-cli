@@ -1,0 +1,68 @@
+﻿namespace Chilano.Xbox360.Xex
+{
+    using IO;
+    using System;
+    using System.IO;
+
+    public class XexResourceInfo : XexInfoField
+    {
+        public static byte[] Signature;
+        public uint ResourceDataAddress;
+        public uint ResourceDataSize;
+
+        static XexResourceInfo()
+        {
+            byte[] buffer = new byte[4];
+            buffer[2] = 2;
+            buffer[3] = 0xff;
+            Signature = buffer;
+        }
+
+        public XexResourceInfo(uint Address) : base(Address)
+        {
+        }
+
+        public override void Parse(CBinaryReader br)
+        {
+            // Address points to the resource info structure in the XEX header
+            br.Seek(Address, SeekOrigin.Begin);
+            br.Endian = EndianType.BigEndian;
+            
+            // Read the resource data size and address
+            ResourceDataSize = br.ReadUInt32();
+            ResourceDataAddress = br.ReadUInt32();
+            
+            Console.WriteLine("+ XexResourceInfo.Parse - Offset in header: 0x" + Address.ToString("X"));
+            Console.WriteLine("  Resource Size: " + ResourceDataSize + " bytes");
+            Console.WriteLine("  Resource Address: 0x" + ResourceDataAddress.ToString("X"));
+        }
+
+        public byte[] ExtractResource(byte[] xexData)
+        {
+            if (ResourceDataAddress == 0 || ResourceDataSize == 0)
+            {
+                Console.WriteLine("- Resource address or size is zero");
+                return new byte[0];
+            }
+            
+            if (ResourceDataAddress >= xexData.Length)
+            {
+                Console.WriteLine("- Resource address (0x" + ResourceDataAddress.ToString("X") + ") is beyond XEX file size (" + xexData.Length + ")");
+                return new byte[0];
+            }
+            
+            if (ResourceDataAddress + ResourceDataSize > xexData.Length)
+            {
+                Console.WriteLine("- Resource extends beyond XEX file (Address: 0x" + ResourceDataAddress.ToString("X") + ", Size: " + ResourceDataSize + ", XEX Size: " + xexData.Length + ")");
+                return new byte[0];
+            }
+            
+            Console.WriteLine("+ Extracting resource data from 0x" + ResourceDataAddress.ToString("X") + " (" + ResourceDataSize + " bytes)");
+            
+            byte[] resourceData = new byte[ResourceDataSize];
+            Array.Copy(xexData, ResourceDataAddress, resourceData, 0, ResourceDataSize);
+            return resourceData;
+        }
+    }
+}
+

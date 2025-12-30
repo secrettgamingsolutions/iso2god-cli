@@ -1,0 +1,88 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\XboxUnityScraper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Chilano\\Iso2God\\XboxUnityScraper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\GameListCsvReader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Chilano\\Iso2God\\GameListCsvReader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\TitleLookupService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Chilano\\Iso2God\\TitleLookupService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Iso2God.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Iso2God.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Iso2God.csproj",
+              "DocumentMoniker": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Iso2God.csproj",
+              "RelativeDocumentMoniker": "Iso2God.csproj",
+              "ToolTip": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Iso2God.csproj",
+              "RelativeToolTip": "Iso2God.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-12-29T19:32:22.831Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "TitleLookupService.cs",
+              "DocumentMoniker": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\TitleLookupService.cs",
+              "RelativeDocumentMoniker": "Chilano\\Iso2God\\TitleLookupService.cs",
+              "ToolTip": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\TitleLookupService.cs",
+              "RelativeToolTip": "Chilano\\Iso2God\\TitleLookupService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-29T19:32:22.659Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "GameListCsvReader.cs",
+              "DocumentMoniker": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\GameListCsvReader.cs",
+              "RelativeDocumentMoniker": "Chilano\\Iso2God\\GameListCsvReader.cs",
+              "ToolTip": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\GameListCsvReader.cs",
+              "RelativeToolTip": "Chilano\\Iso2God\\GameListCsvReader.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-29T19:32:22.534Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "XboxUnityScraper.cs",
+              "DocumentMoniker": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\XboxUnityScraper.cs",
+              "RelativeDocumentMoniker": "Chilano\\Iso2God\\XboxUnityScraper.cs",
+              "ToolTip": "C:\\Users\\secre\\Documents\\GitHub\\iso2god-cli\\Chilano\\Iso2God\\XboxUnityScraper.cs",
+              "RelativeToolTip": "Chilano\\Iso2God\\XboxUnityScraper.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-29T19:32:22.346Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

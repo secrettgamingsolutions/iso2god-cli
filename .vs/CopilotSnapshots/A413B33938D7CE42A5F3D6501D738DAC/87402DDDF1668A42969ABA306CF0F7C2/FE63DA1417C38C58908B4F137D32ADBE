@@ -1,0 +1,89 @@
+﻿namespace Chilano.Xbox360.Xex
+{
+    using IO;
+    using System;
+    using System.IO;
+
+    public class XexResourceInfo : XexInfoField
+    {
+        public static byte[] Signature;
+        public uint ResourceDataAddress;
+        public uint ResourceDataSize;
+
+        static XexResourceInfo()
+        {
+            byte[] buffer = new byte[4];
+            buffer[2] = 2;
+            buffer[3] = 0xff;
+            Signature = buffer;
+        }
+
+        public XexResourceInfo(uint Address) : base(Address)
+        {
+        }
+
+        public override void Parse(CBinaryReader br)
+        {
+            // Address points to the resource info structure in the XEX header
+            br.Seek(Address, SeekOrigin.Begin);
+            br.Endian = EndianType.BigEndian;
+            
+            Console.WriteLine("+ XexResourceInfo.Parse - Seeking to offset: 0x" + Address.ToString("X"));
+            
+            // Read 16 bytes and dump them for debugging
+            byte[] debugBytes = br.ReadBytes(16);
+            Console.Write("  Raw bytes at 0x" + Address.ToString("X") + ": ");
+            for (int i = 0; i < debugBytes.Length; i++)
+            {
+                Console.Write(debugBytes[i].ToString("X2") + " ");
+            }
+            Console.WriteLine();
+            
+            // Reset position
+            br.Seek(Address, SeekOrigin.Begin);
+            
+            // Try reading as BigEndian
+            uint value1 = br.ReadUInt32();
+            uint value2 = br.ReadUInt32();
+            
+            Console.WriteLine("  BigEndian - Value1: 0x" + value1.ToString("X") + " (" + value1 + "), Value2: 0x" + value2.ToString("X") + " (" + value2 + ")");
+            
+            // The first value should be size, second should be address
+            // But if address looks like ASCII (like 0x34353431 = "4541"), we have the wrong endianness or wrong structure
+            
+            // Let's try: Size then Address
+            ResourceDataSize = value1;
+            ResourceDataAddress = value2;
+            
+            Console.WriteLine("  Interpreted as - Size: " + ResourceDataSize + " bytes, Address: 0x" + ResourceDataAddress.ToString("X"));
+        }
+
+        public byte[] ExtractResource(byte[] xexData)
+        {
+            if (ResourceDataAddress == 0 || ResourceDataSize == 0)
+            {
+                Console.WriteLine("- Resource address or size is zero");
+                return new byte[0];
+            }
+            
+            if (ResourceDataAddress >= xexData.Length)
+            {
+                Console.WriteLine("- Resource address (0x" + ResourceDataAddress.ToString("X") + ") is beyond XEX file size (" + xexData.Length + ")");
+                return new byte[0];
+            }
+            
+            if (ResourceDataAddress + ResourceDataSize > xexData.Length)
+            {
+                Console.WriteLine("- Resource extends beyond XEX file (Address: 0x" + ResourceDataAddress.ToString("X") + ", Size: " + ResourceDataSize + ", XEX Size: " + xexData.Length + ")");
+                return new byte[0];
+            }
+            
+            Console.WriteLine("+ Extracting resource data from 0x" + ResourceDataAddress.ToString("X") + " (" + ResourceDataSize + " bytes)");
+            
+            byte[] resourceData = new byte[ResourceDataSize];
+            Array.Copy(xexData, ResourceDataAddress, resourceData, 0, ResourceDataSize);
+            return resourceData;
+        }
+    }
+}
+

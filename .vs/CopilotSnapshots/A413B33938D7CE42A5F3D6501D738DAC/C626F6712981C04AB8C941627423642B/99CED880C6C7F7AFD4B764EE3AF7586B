@@ -1,0 +1,192 @@
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Text;
+
+namespace Chilano.Iso2God
+{
+    /// <summary>
+    /// Service to lookup Xbox 360 game titles by TitleID using xboxunity.net API
+    /// </summary>
+    internal class TitleLookupService
+    {
+        /// <summary>
+        /// Lookup game title using xboxunity.net backend API
+        /// </summary>
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            Console.WriteLine("+ Looking up TitleID " + titleId + " on xboxunity.net...");
+
+            // Enable TLS 1.2 for HTTPS
+            try
+            {
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+            }
+            catch
+            {
+                Console.WriteLine("- Warning: Could not enable TLS 1.2");
+            }
+
+            // Try the backend PHP API endpoint
+            string apiUrl = "https://xboxunity.net/Resources/Lib/Title.php?titleId=" + titleId;
+            
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(apiUrl);
+                request.Method = "GET";
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+                request.Accept = "application/json, text/javascript, */*; q=0.01";
+                request.Referer = "https://xboxunity.net/";
+                request.Timeout = 10000; // 10 seconds
+                
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                        {
+                            string jsonResponse = reader.ReadToEnd();
+                            
+                            Console.WriteLine("+ API Response length: " + jsonResponse.Length + " bytes");
+                            
+                            // Parse JSON response
+                            string title = ParseTitleFromJson(jsonResponse);
+                            
+                            if (!string.IsNullOrEmpty(title))
+                            {
+                                Console.WriteLine("+ Found game title: " + title);
+                                return title;
+                            }
+                            else
+                            {
+                                Console.WriteLine("- Could not extract title from API response");
+                                // Show first 200 chars of response for debugging
+                                if (jsonResponse.Length > 0)
+                                {
+                                    string preview = jsonResponse.Substring(0, Math.Min(200, jsonResponse.Length));
+                                    Console.WriteLine("  Response preview: " + preview);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("- API returned status: " + response.StatusCode);
+                    }
+                }
+            }
+            catch (WebException webEx)
+            {
+                Console.WriteLine("- API request failed (WebException): " + webEx.Message);
+                
+                if (webEx.Response != null)
+                {
+                    try
+                    {
+                        using (StreamReader reader = new StreamReader(webEx.Response.GetResponseStream()))
+                        {
+                            string errorResponse = reader.ReadToEnd();
+                            Console.WriteLine("  Error response: " + errorResponse.Substring(0, Math.Min(200, errorResponse.Length)));
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- Lookup failed: " + ex.Message);
+            }
+
+            return null;
+        }
+
+        private static string ParseTitleFromJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+                return null;
+
+            // Try multiple JSON field names
+            string[] fieldNames = new string[] { "title", "name", "Title", "Name", "gameName", "titleName" };
+            
+            foreach (string fieldName in fieldNames)
+            {
+                string value = ExtractJsonField(json, fieldName);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    return value;
+                }
+            }
+
+            return null;
+        }
+
+        private static string ExtractJsonField(string json, string fieldName)
+        {
+            try
+            {
+                // Look for "fieldName":"value" or "fieldName": "value"
+                string[] patterns = new string[] 
+                {
+                    "\"" + fieldName + "\":\"",
+                    "\"" + fieldName + "\": \"",
+                    "'" + fieldName + "':'",
+                    "'" + fieldName + "': '"
+                };
+
+                foreach (string pattern in patterns)
+                {
+                    int start = json.IndexOf(pattern);
+                    
+                    if (start >= 0)
+                    {
+                        start += pattern.Length;
+                        
+                        // Find the closing quote
+                        char closingChar = pattern.Contains("\"") ? '"' : '\'';
+                        int end = json.IndexOf(closingChar, start);
+                        
+                        if (end > start)
+                        {
+                            string value = json.Substring(start, end - start);
+                            
+                            // Unescape JSON
+                            value = value.Replace("\\\"", "\"");
+                            value = value.Replace("\\'", "'");
+                            value = value.Replace("\\\\", "\\");
+                            value = value.Replace("\\/", "/");
+                            value = value.Replace("\\n", " ");
+                            value = value.Replace("\\r", "");
+                            value = value.Replace("\\t", " ");
+                            
+                            value = value.Trim();
+                            
+                            // Validate it's a real title (not empty, not just numbers)
+                            if (value.Length > 0 && !IsAllDigits(value))
+                            {
+                                return value;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            
+            return null;
+        }
+
+        private static bool IsAllDigits(string str)
+        {
+            foreach (char c in str)
+            {
+                if (!char.IsDigit(c))
+                    return false;
+            }
+            return true;
+        }
+    }
+}

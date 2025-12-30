@@ -11,7 +11,7 @@ namespace Chilano.Iso2God
         [STAThread]
         private static void Main()
         {
-           Console.WriteLine("Iso2god-cli " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion + " - " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).LegalCopyright);
+            Console.WriteLine("Iso2god-cli " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion + " - " + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).LegalCopyright);
             Console.WriteLine("Ported to CLI by Elie CHARRA <elie [dot] charra [at] gmail.com>");
             Console.WriteLine("Usage : iso2god <source iso> <destination folder>");
             Console.WriteLine("");
@@ -24,8 +24,8 @@ namespace Chilano.Iso2God
                 String isoPath = arguments[1];
                 String destinationPath = arguments[2];
 
-                Console.WriteLine("+ Computing ISO metadata ...");                
-                IsoDetails iso = new IsoDetails(new IsoDetailsArgs(isoPath, Path.GetTempPath(), Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar + "xextool.exe"));
+                Console.WriteLine("+ Computing ISO metadata ...");
+                IsoDetails iso = new IsoDetails(new IsoDetailsArgs(isoPath, Path.GetTempPath()));
                 IsoDetailsResults isoDetailsResults = iso.IsoDetails_DoWork();
                 IsoEntryID isoEntryID = new IsoEntryID(isoDetailsResults.TitleID, isoDetailsResults.MediaID, Convert.ToByte(isoDetailsResults.DiscNumber[0]), Convert.ToByte(isoDetailsResults.DiscCount[0]), Convert.ToByte(isoDetailsResults.Platform[0]), Convert.ToByte(isoDetailsResults.ExType[0]));
                 IsoEntry isoEntry = new IsoEntry(IsoEntryPlatform.Xbox360, isoPath, destinationPath, new FileInfo(isoPath).Length, isoDetailsResults.Name, isoEntryID);

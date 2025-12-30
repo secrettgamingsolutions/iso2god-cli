@@ -1,0 +1,103 @@
+﻿namespace Chilano.Iso2God
+{
+    using System;
+    using System.IO;
+    using System.Net;
+    using System.Text;
+
+    internal class XboxUnityScraper
+    {
+        private const string API_BASE_URL = "http://xboxunity.net/Resources/Lib/TitleList.php";
+        private const int REQUEST_TIMEOUT = 5000; // 5 seconds
+
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            try
+            {
+                string url = string.Format("{0}?page=0&count=1&search={1}&sort=0&direction=0&category=0&filter=0",
+                    API_BASE_URL, titleId.ToUpper());
+
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.Timeout = REQUEST_TIMEOUT;
+                request.UserAgent = "iso2god-cli/1.0";
+
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        return null;
+                    }
+
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string jsonResponse = reader.ReadToEnd();
+                        return ParseTitleNameFromJson(jsonResponse);
+                    }
+                }
+            }
+            catch (WebException)
+            {
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static string ParseTitleNameFromJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                // Simple JSON parsing without external libraries (compatible with .NET 2.0)
+                int nameIndex = json.IndexOf("\"Name\"");
+                if (nameIndex == -1)
+                {
+                    return null;
+                }
+
+                int colonIndex = json.IndexOf(":", nameIndex);
+                if (colonIndex == -1)
+                {
+                    return null;
+                }
+
+                int quoteStart = json.IndexOf("\"", colonIndex + 1);
+                if (quoteStart == -1)
+                {
+                    return null;
+                }
+
+                int quoteEnd = json.IndexOf("\"", quoteStart + 1);
+                if (quoteEnd == -1)
+                {
+                    return null;
+                }
+
+                string titleName = json.Substring(quoteStart + 1, quoteEnd - quoteStart - 1);
+                
+                // Unescape JSON string
+                titleName = titleName.Replace("\\\"", "\"");
+                titleName = titleName.Replace("\\\\", "\\");
+                titleName = titleName.Replace("\\/", "/");
+                
+                return string.IsNullOrEmpty(titleName) ? null : titleName;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+    }
+}

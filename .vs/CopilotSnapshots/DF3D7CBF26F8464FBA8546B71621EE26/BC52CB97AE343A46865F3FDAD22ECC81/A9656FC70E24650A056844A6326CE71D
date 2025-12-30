@@ -1,0 +1,80 @@
+﻿namespace Chilano.Iso2God
+{
+    using System;
+    using System.IO;
+    using System.Reflection;
+
+    internal class GameListCsvReader
+    {
+        private static string GetExecutableDirectory()
+        {
+            return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        }
+
+        public static string LookupTitleByTitleId(string titleId, IsoDetailsPlatform platform)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            string csvFileName = platform == IsoDetailsPlatform.Xbox360 
+                ? "gamelist_xbox360.csv" 
+                : "gamelist_xbox.csv";
+
+            string csvPath = Path.Combine(GetExecutableDirectory(), csvFileName);
+
+            if (!File.Exists(csvPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                using (StreamReader reader = new StreamReader(csvPath))
+                {
+                    // Skip header line
+                    string headerLine = reader.ReadLine();
+                    if (headerLine == null)
+                    {
+                        return null;
+                    }
+
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            continue;
+                        }
+
+                        // Parse tab-delimited CSV
+                        string[] parts = line.Split('\t');
+                        if (parts.Length < 3)
+                        {
+                            continue;
+                        }
+
+                        string csvTitleId = parts[0].Trim().Trim('"');
+                        string titleName = parts[2].Trim().Trim('"');
+
+                        if (csvTitleId.Equals(titleId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return string.IsNullOrEmpty(titleName) ? null : titleName;
+                        }
+                    }
+                }
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
+            return null;
+        }
+    }
+}

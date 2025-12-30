@@ -1,0 +1,152 @@
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Text;
+
+namespace Chilano.Iso2God
+{
+    /// <summary>
+    /// Service to lookup Xbox 360 game titles by TitleID using online APIs
+    /// </summary>
+    internal class TitleLookupService
+    {
+        /// <summary>
+        /// Attempts to lookup the game title from TitleID using an online API
+        /// </summary>
+        /// <param name="titleId">8-character hex TitleID (e.g., "4541099F")</param>
+        /// <returns>Game title if found, null otherwise</returns>
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            Console.WriteLine("+ Attempting online lookup for TitleID: " + titleId);
+
+            // Try multiple APIs in order
+            string result = null;
+            
+            // API 1: marketplace.xbox.com (no HTTPS issues)
+            result = TryXboxMarketplace(titleId);
+            if (result != null) return result;
+            
+            // API 2: XGD API
+            result = TryXgdApi(titleId);
+            if (result != null) return result;
+            
+            Console.WriteLine("- All online lookups failed");
+            return null;
+        }
+
+        private static string TryXboxMarketplace(string titleId)
+        {
+            try
+            {
+                // Xbox Marketplace API endpoint
+                string url = "http://marketplace.xbox.com/en-US/Product/" + titleId;
+                
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+                request.Timeout = 3000; // 3 seconds
+                request.AllowAutoRedirect = true;
+                
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                        {
+                            string html = reader.ReadToEnd();
+                            
+                            // Look for <title> tag
+                            string titleTag = "<title>";
+                            int start = html.IndexOf(titleTag);
+                            if (start >= 0)
+                            {
+                                start += titleTag.Length;
+                                int end = html.IndexOf("</title>", start);
+                                if (end > start)
+                                {
+                                    string title = html.Substring(start, end - start).Trim();
+                                    
+                                    // Remove " | Xbox.com" suffix if present
+                                    if (title.Contains(" | "))
+                                    {
+                                        title = title.Substring(0, title.IndexOf(" | "));
+                                    }
+                                    
+                                    if (!string.IsNullOrEmpty(title))
+                                    {
+                                        Console.WriteLine("+ Found title from Xbox Marketplace: " + title);
+                                        return title;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- Xbox Marketplace lookup failed: " + ex.Message);
+            }
+            
+            return null;
+        }
+
+        private static string TryXgdApi(string titleId)
+        {
+            try
+            {
+                // Alternate API without SSL/TLS issues
+                string url = "http://xgd.io/api/title/" + titleId;
+                
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.UserAgent = "Iso2God-CLI/1.0";
+                request.Timeout = 3000;
+                
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                        {
+                            string json = reader.ReadToEnd();
+                            
+                            // Simple JSON parsing
+                            string namePattern = "\"name\":\"";
+                            int nameStart = json.IndexOf(namePattern);
+                            
+                            if (nameStart >= 0)
+                            {
+                                nameStart += namePattern.Length;
+                                int nameEnd = json.IndexOf("\"", nameStart);
+                                
+                                if (nameEnd > nameStart)
+                                {
+                                    string name = json.Substring(nameStart, nameEnd - nameStart);
+                                    name = name.Replace("\\\"", "\"").Replace("\\\\", "\\");
+                                    
+                                    if (!string.IsNullOrEmpty(name))
+                                    {
+                                        Console.WriteLine("+ Found title from XGD API: " + name);
+                                        return name;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- XGD API lookup failed: " + ex.Message);
+            }
+            
+            return null;
+        }
+    }
+}

@@ -1,0 +1,50 @@
+﻿namespace Chilano.Xbox360.Xex
+{
+    using IO;
+    using System.IO;
+
+    public class XexResourceInfo : XexInfoField
+    {
+        public static byte[] Signature;
+        public uint ResourceAddress;
+        public uint ResourceSize;
+
+        static XexResourceInfo()
+        {
+            byte[] buffer = new byte[4];
+            buffer[2] = 2;
+            buffer[3] = 0xff;
+            Signature = buffer;
+        }
+
+        public XexResourceInfo(uint Address) : base(Address)
+        {
+        }
+
+        public override void Parse(CBinaryReader br)
+        {
+            br.Seek(Address, SeekOrigin.Begin);
+            br.Endian = EndianType.BigEndian;
+            ResourceSize = br.ReadUInt32();
+            ResourceAddress = br.ReadUInt32();
+        }
+
+        public byte[] ExtractResource(byte[] xexData)
+        {
+            if (ResourceAddress == 0 || ResourceSize == 0)
+            {
+                return new byte[0];
+            }
+
+            if (ResourceAddress >= xexData.Length || ResourceAddress + ResourceSize > xexData.Length)
+            {
+                return new byte[0];
+            }
+
+            byte[] resourceData = new byte[ResourceSize];
+            System.Array.Copy(xexData, ResourceAddress, resourceData, 0, ResourceSize);
+            return resourceData;
+        }
+    }
+}
+

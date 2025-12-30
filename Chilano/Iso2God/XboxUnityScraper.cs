@@ -1,0 +1,141 @@
+namespace Chilano.Iso2God
+{
+    using System;
+    using System.IO;
+    using System.Net;
+    using System.Text;
+
+    internal class XboxUnityScraper
+    {
+        private const string API_BASE_URL = "http://xboxunity.net/Resources/Lib/TitleList.php";
+        private const int REQUEST_TIMEOUT = 30000;
+
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            try
+            {
+                string url = string.Format("{0}?page=0&count=10&search={1}&sort=3&direction=1&category=0&filter=0",
+                    API_BASE_URL, titleId.ToUpper());
+
+                Console.WriteLine("+ XboxUnity API URL: " + url);
+
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.Timeout = REQUEST_TIMEOUT;
+                request.ReadWriteTimeout = REQUEST_TIMEOUT;
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+                request.Accept = "application/json";
+                request.KeepAlive = true;
+
+                Console.WriteLine("+ Sending request (timeout: 30s)...");
+
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    Console.WriteLine("+ HTTP " + (int)response.StatusCode);
+                    
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        return null;
+                    }
+
+                    StringBuilder jsonBuilder = new StringBuilder();
+                    using (Stream stream = response.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        char[] buffer = new char[4096];
+                        int bytesRead;
+                        
+                        while ((bytesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            jsonBuilder.Append(buffer, 0, bytesRead);
+                        }
+                    }
+                    
+                    string json = jsonBuilder.ToString();
+                    Console.WriteLine("+ Response: " + json.Length + " chars");
+                    
+                    if (json.Length > 0 && json.Length < 500)
+                    {
+                        Console.WriteLine("+ Data: " + json);
+                    }
+                    
+                    return ParseTitleNameFromJson(json);
+                }
+            }
+            catch (WebException ex)
+            {
+                Console.WriteLine("+ API error: " + ex.Message);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("+ Error: " + ex.Message);
+                return null;
+            }
+        }
+
+        private static string ParseTitleNameFromJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                int nameIndex = json.IndexOf("\"Name\"");
+                if (nameIndex == -1)
+                {
+                    return null;
+                }
+
+                int colonIndex = json.IndexOf(":", nameIndex);
+                if (colonIndex == -1)
+                {
+                    return null;
+                }
+
+                int quoteStart = json.IndexOf("\"", colonIndex + 1);
+                if (quoteStart == -1)
+                {
+                    return null;
+                }
+
+                int quoteEnd = quoteStart + 1;
+                while (quoteEnd < json.Length)
+                {
+                    if (json[quoteEnd] == '"' && json[quoteEnd - 1] != '\\')
+                    {
+                        break;
+                    }
+                    quoteEnd++;
+                }
+
+                if (quoteEnd >= json.Length)
+                {
+                    return null;
+                }
+
+                string titleName = json.Substring(quoteStart + 1, quoteEnd - quoteStart - 1);
+                
+                titleName = titleName.Replace("\\\"", "\"")
+                                     .Replace("\\\\", "\\")
+                                     .Replace("\\/", "/")
+                                     .Trim();
+                
+                Console.WriteLine("+ Found: " + titleName);
+                
+                return string.IsNullOrEmpty(titleName) ? null : titleName;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+}

@@ -1,0 +1,151 @@
+﻿namespace Chilano.Iso2God
+{
+    using System;
+    using System.IO;
+    using System.Net;
+    using System.Text;
+
+    internal class XboxUnityScraper
+    {
+        private const string API_BASE_URL = "http://xboxunity.net/Resources/Lib/TitleList.php";
+        private const int REQUEST_TIMEOUT = 10000; // 10 seconds
+
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            try
+            {
+                // Build XboxUnity search API URL with TitleID
+                string url = string.Format("{0}?page=0&count=10&search={1}&sort=3&direction=1&category=0&filter=0",
+                    API_BASE_URL, titleId.ToUpper());
+
+                Console.WriteLine("+ XboxUnity API URL: " + url);
+
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.Timeout = REQUEST_TIMEOUT;
+                request.UserAgent = "iso2god-cli/1.0";
+                request.Accept = "application/json, text/javascript, */*; q=0.01";
+
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        Console.WriteLine("+ XboxUnity API returned status: " + response.StatusCode);
+                        return null;
+                    }
+
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string jsonResponse = reader.ReadToEnd();
+                        Console.WriteLine("+ XboxUnity API response length: " + jsonResponse.Length + " bytes");
+                        
+                        // Show first 200 chars of response for debugging
+                        if (jsonResponse.Length > 0)
+                        {
+                            string preview = jsonResponse.Substring(0, Math.Min(200, jsonResponse.Length));
+                            Console.WriteLine("+ Response preview: " + preview);
+                        }
+                        
+                        string titleName = ParseTitleNameFromJson(jsonResponse);
+                        
+                        if (!string.IsNullOrEmpty(titleName))
+                        {
+                            Console.WriteLine("+ ✓ Found game title via API: " + titleName);
+                        }
+                        else
+                        {
+                            Console.WriteLine("+ ✗ Could not extract title from API response");
+                        }
+                        
+                        return titleName;
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                Console.WriteLine("+ XboxUnity API error (WebException): " + ex.Message);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("+ XboxUnity API unexpected error: " + ex.Message);
+                return null;
+            }
+        }
+
+        private static string ParseTitleNameFromJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                // Look for "Name":"Title Name" pattern
+                // The response format is: {"Items":[{"TitleId":"...","Name":"Game Name",...}]}
+                
+                int nameIndex = json.IndexOf("\"Name\"");
+                if (nameIndex == -1)
+                {
+                    Console.WriteLine("+ 'Name' field not found in JSON");
+                    return null;
+                }
+
+                // Find the colon after "Name"
+                int colonIndex = json.IndexOf(":", nameIndex);
+                if (colonIndex == -1)
+                {
+                    return null;
+                }
+
+                // Find the opening quote of the value
+                int quoteStart = json.IndexOf("\"", colonIndex + 1);
+                if (quoteStart == -1)
+                {
+                    return null;
+                }
+
+                // Find the closing quote (accounting for escaped quotes)
+                int quoteEnd = quoteStart + 1;
+                while (quoteEnd < json.Length)
+                {
+                    if (json[quoteEnd] == '"' && json[quoteEnd - 1] != '\\')
+                    {
+                        break;
+                    }
+                    quoteEnd++;
+                }
+
+                if (quoteEnd >= json.Length)
+                {
+                    return null;
+                }
+
+                string titleName = json.Substring(quoteStart + 1, quoteEnd - quoteStart - 1);
+                
+                // Unescape JSON string
+                titleName = titleName.Replace("\\\"", "\"");
+                titleName = titleName.Replace("\\\\", "\\")
+                                     .Replace("\\/", "/")
+                                     .Replace("\\n", " ")
+                                     .Replace("\\r", "")
+                                     .Trim();
+                
+                Console.WriteLine("+ Parsed title from JSON: '" + titleName + "'");
+                
+                return string.IsNullOrEmpty(titleName) ? null : titleName;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("+ JSON parsing error: " + ex.Message);
+                return null;
+            }
+        }
+    }
+}

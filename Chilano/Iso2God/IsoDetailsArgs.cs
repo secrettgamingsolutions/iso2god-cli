@@ -4,13 +4,11 @@
     {
         public string PathISO;
         public string PathTemp;
-        public string PathXexTool;
 
-        public IsoDetailsArgs(string ISO, string Temp, string XT)
+        public IsoDetailsArgs(string ISO, string Temp)
         {
             PathISO = ISO;
             PathTemp = Temp;
-            PathXexTool = XT;
         }
     }
 }

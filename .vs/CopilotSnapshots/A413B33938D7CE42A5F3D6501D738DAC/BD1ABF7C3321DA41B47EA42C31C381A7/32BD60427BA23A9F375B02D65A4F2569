@@ -1,0 +1,239 @@
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Text;
+
+namespace Chilano.Iso2God
+{
+    /// <summary>
+    /// Service to lookup Xbox 360 game titles by TitleID using online APIs
+    /// </summary>
+    internal class TitleLookupService
+    {
+        /// <summary>
+        /// Attempts to lookup the game title from TitleID using xboxunity.net
+        /// </summary>
+        /// <param name="titleId">8-character hex TitleID (e.g., "4541099F")</param>
+        /// <returns>Game title if found, null otherwise</returns>
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            Console.WriteLine("+ Attempting online lookup for TitleID: " + titleId);
+
+            try
+            {
+                // XboxUnity.net search URL
+                string searchUrl = "https://xboxunity.net/#search=" + titleId;
+                
+                // The actual API endpoint for direct title lookup
+                string apiUrl = "https://xboxunity.net/Resources/Lib/Title.php?titleId=" + titleId;
+                
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(apiUrl);
+                request.Method = "GET";
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+                request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+                request.Timeout = 5000; // 5 seconds
+                
+                // Enable TLS 1.2 for HTTPS
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+                
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                        {
+                            string responseText = reader.ReadToEnd();
+                            
+                            // The response might be JSON or HTML, parse accordingly
+                            // Look for title in various formats
+                            
+                            // Try JSON format: "title":"Game Name"
+                            string title = ExtractFromJson(responseText, "title");
+                            if (!string.IsNullOrEmpty(title))
+                            {
+                                Console.WriteLine("+ Found title from XboxUnity: " + title);
+                                return title;
+                            }
+                            
+                            // Try JSON format: "name":"Game Name"
+                            title = ExtractFromJson(responseText, "name");
+                            if (!string.IsNullOrEmpty(title))
+                            {
+                                Console.WriteLine("+ Found title from XboxUnity: " + title);
+                                return title;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (WebException webEx)
+            {
+                Console.WriteLine("- XboxUnity lookup failed (WebException): " + webEx.Message);
+                if (webEx.Response != null)
+                {
+                    using (StreamReader reader = new StreamReader(webEx.Response.GetResponseStream()))
+                    {
+                        string errorResponse = reader.ReadToEnd();
+                        Console.WriteLine("  Response: " + errorResponse.Substring(0, Math.Min(200, errorResponse.Length)));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- XboxUnity lookup failed: " + ex.Message);
+            }
+
+            // Try alternate method: scrape the search page
+            return TryXboxUnityScrape(titleId);
+        }
+
+        private static string TryXboxUnityScrape(string titleId)
+        {
+            try
+            {
+                Console.WriteLine("+ Trying XboxUnity search page scraping...");
+                
+                string searchUrl = "https://xboxunity.net/#search=" + titleId;
+                
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(searchUrl);
+                request.Method = "GET";
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+                request.Timeout = 5000;
+                
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+                
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                        {
+                            string html = reader.ReadToEnd();
+                            
+                            // Look for title in HTML
+                            // Common patterns: <h1>, <title>, class="title", etc.
+                            string title = ExtractTitleFromHtml(html, titleId);
+                            if (!string.IsNullOrEmpty(title))
+                            {
+                                Console.WriteLine("+ Found title from XboxUnity search: " + title);
+                                return title;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("- XboxUnity scraping failed: " + ex.Message);
+            }
+            
+            return null;
+        }
+
+        private static string ExtractFromJson(string json, string key)
+        {
+            try
+            {
+                string pattern = "\"" + key + "\":\"";
+                int start = json.IndexOf(pattern);
+                
+                if (start >= 0)
+                {
+                    start += pattern.Length;
+                    int end = json.IndexOf("\"", start);
+                    
+                    if (end > start)
+                    {
+                        string value = json.Substring(start, end - start);
+                        
+                        // Unescape JSON
+                        value = value.Replace("\\\"", "\"");
+                        value = value.Replace("\\\\", "\\");
+                        value = value.Replace("\\/", "/");
+                        
+                        return value.Trim();
+                    }
+                }
+            }
+            catch { }
+            
+            return null;
+        }
+
+        private static string ExtractTitleFromHtml(string html, string titleId)
+        {
+            try
+            {
+                // Look for patterns near the TitleID in HTML
+                int titleIdPos = html.IndexOf(titleId);
+                if (titleIdPos < 0) return null;
+                
+                // Search backwards and forwards for title tags
+                string[] titlePatterns = new string[] 
+                { 
+                    "<h1>", "</h1>",
+                    "<h2>", "</h2>",
+                    "class=\"title\">", "</",
+                    "<title>", "</title>"
+                };
+                
+                for (int i = 0; i < titlePatterns.Length; i += 2)
+                {
+                    string openTag = titlePatterns[i];
+                    string closeTag = titlePatterns[i + 1];
+                    
+                    // Search in a window around the TitleID position
+                    int searchStart = Math.Max(0, titleIdPos - 1000);
+                    int searchEnd = Math.Min(html.Length, titleIdPos + 1000);
+                    string window = html.Substring(searchStart, searchEnd - searchStart);
+                    
+                    int start = window.IndexOf(openTag);
+                    if (start >= 0)
+                    {
+                        start += openTag.Length;
+                        int end = window.IndexOf(closeTag, start);
+                        
+                        if (end > start)
+                        {
+                            string title = window.Substring(start, end - start).Trim();
+                            
+                            // Clean up HTML entities and tags
+                            title = title.Replace("&amp;", "&");
+                            title = title.Replace("&quot;", "\"");
+                            title = title.Replace("&lt;", "<");
+                            title = title.Replace("&gt;", ">");
+                            
+                            // Remove remaining HTML tags
+                            while (title.Contains("<") && title.Contains(">"))
+                            {
+                                int tagStart = title.IndexOf("<");
+                                int tagEnd = title.IndexOf(">", tagStart);
+                                if (tagEnd > tagStart)
+                                {
+                                    title = title.Remove(tagStart, tagEnd - tagStart + 1);
+                                }
+                                else break;
+                            }
+                            
+                            title = title.Trim();
+                            
+                            // Validate it's not just the TitleID
+                            if (title.Length > 0 && title != titleId && !title.Contains("XboxUnity"))
+                            {
+                                return title;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            
+            return null;
+        }
+    }
+}

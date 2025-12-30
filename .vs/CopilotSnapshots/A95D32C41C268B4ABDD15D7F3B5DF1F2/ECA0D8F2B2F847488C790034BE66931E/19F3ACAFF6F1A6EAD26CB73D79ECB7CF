@@ -1,0 +1,53 @@
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Text;
+
+namespace Chilano.Iso2God
+{
+    /// <summary>
+    /// Service to lookup Xbox 360 game titles by TitleID using XboxUnity API with CSV fallback
+    /// </summary>
+    internal class TitleLookupService
+    {
+        /// <summary>
+        /// Lookup game title using XboxUnity API, with local CSV fallback
+        /// </summary>
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            return LookupTitleByTitleId(titleId, IsoDetailsPlatform.Xbox360);
+        }
+
+        public static string LookupTitleByTitleId(string titleId, IsoDetailsPlatform platform)
+        {
+            if (string.IsNullOrEmpty(titleId))
+            {
+                return null;
+            }
+
+            // Step 1: Try XboxUnity online API
+            Console.WriteLine("+ Attempting to fetch game title from XboxUnity API...");
+            string gameName = XboxUnityScraper.LookupTitleByTitleId(titleId);
+            
+            if (!string.IsNullOrEmpty(gameName))
+            {
+                Console.WriteLine("+ Game title found online: " + gameName);
+                return gameName;
+            }
+
+            Console.WriteLine("+ Online lookup failed or timed out. Trying local CSV database...");
+
+            // Step 2: Fallback to local CSV files
+            gameName = GameListCsvReader.LookupTitleByTitleId(titleId, platform);
+            
+            if (!string.IsNullOrEmpty(gameName))
+            {
+                Console.WriteLine("+ Game title found in local CSV: " + gameName);
+                return gameName;
+            }
+
+            Console.WriteLine("+ Game title not found in local CSV database.");
+            return null;
+        }
+    }
+}

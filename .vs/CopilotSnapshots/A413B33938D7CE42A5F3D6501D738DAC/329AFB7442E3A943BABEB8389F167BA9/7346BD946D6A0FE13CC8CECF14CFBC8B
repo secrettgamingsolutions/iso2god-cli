@@ -1,0 +1,66 @@
+﻿namespace Chilano.Xbox360.Xex
+{
+    using IO;
+    using System;
+    using System.IO;
+
+    public class XexInfo : IDisposable
+    {
+        private CBinaryReader br;
+        public XexHeader Header;
+        private MemoryStream ms;
+        private byte[] xexData;
+
+        public XexInfo(byte[] Xex)
+        {
+            xexData = Xex;
+            ms = new MemoryStream(Xex);
+            br = new CBinaryReader(EndianType.BigEndian, ms);
+            Header = new XexHeader(br);
+            foreach (XexInfoField field in Header.Values)
+            {
+                if (!field.Flags)
+                {
+                    field.Parse(br);
+                }
+            }
+        }
+
+        public byte[] GetResourceData()
+        {
+            if (Header.ContainsKey(XexInfoFields.ResourceInfo))
+            {
+                XexResourceInfo resourceInfo = (XexResourceInfo)Header[XexInfoFields.ResourceInfo];
+                Console.WriteLine("+ Resource info - Address: 0x" + resourceInfo.ResourceAddress.ToString("X") + ", Size: " + resourceInfo.ResourceSize);
+                
+                if (resourceInfo.ResourceAddress == 0 || resourceInfo.ResourceSize == 0)
+                {
+                    Console.WriteLine("- Resource address or size is zero");
+                    return new byte[0];
+                }
+                
+                return resourceInfo.ExtractResource(xexData);
+            }
+            else
+            {
+                Console.WriteLine("- ResourceInfo key not found in XEX header");
+            }
+            return new byte[0];
+        }
+
+        public void Dispose()
+        {
+            br.Close();
+            ms.Close();
+        }
+
+        public bool IsValid
+        {
+            get
+            {
+                return (Header.Count > 0);
+            }
+        }
+    }
+}
+

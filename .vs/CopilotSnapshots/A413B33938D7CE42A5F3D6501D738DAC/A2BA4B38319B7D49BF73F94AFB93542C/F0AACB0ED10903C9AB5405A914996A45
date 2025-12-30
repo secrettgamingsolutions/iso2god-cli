@@ -1,0 +1,88 @@
+﻿namespace Chilano.Iso2God
+{
+    using System;
+    using System.IO;
+    using System.Net;
+    using System.Text;
+
+    internal class XboxUnityScraper
+    {
+        private const string API_BASE_URL = "http://xboxunity.net/Resources/Lib/TitleList.php";
+        private const int REQUEST_TIMEOUT = 30000; // 30 seconds
+        private const int READ_TIMEOUT = 30000; // 30 seconds
+
+        public static string LookupTitleByTitleId(string titleId)
+        {
+            if (string.IsNullOrEmpty(titleId) || titleId.Length != 8)
+            {
+                return null;
+            }
+
+            try
+            {
+                // Build XboxUnity search API URL with TitleID
+                string url = string.Format("{0}?page=0&count=10&search={1}&sort=3&direction=1&category=0&filter=0",
+                    API_BASE_URL, titleId.ToUpper());
+
+                Console.WriteLine("+ XboxUnity API URL: " + url);
+
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+                request.Timeout = REQUEST_TIMEOUT;
+                request.ReadWriteTimeout = READ_TIMEOUT;
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+                request.Accept = "application/json, text/javascript, */*; q=0.01";
+                request.KeepAlive = true;
+                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                
+                // Important: Set connection limit
+                ServicePointManager.DefaultConnectionLimit = 10;
+                ServicePointManager.Expect100Continue = false;
+
+                Console.WriteLine("+ Sending HTTP request (connection timeout: " + (REQUEST_TIMEOUT / 1000) + "s, read timeout: " + (READ_TIMEOUT / 1000) + "s)...");
+
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    Console.WriteLine("+ HTTP Status: " + (int)response.StatusCode + " " + response.StatusCode);
+                    Console.WriteLine("+ Content-Length: " + response.ContentLength + " bytes");
+                    Console.WriteLine("+ Content-Type: " + response.ContentType);
+                    
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        Console.WriteLine("+ ✗ XboxUnity API returned non-OK status");
+                        return null;
+                    }
+
+                    // Read response with buffer
+                    StringBuilder jsonBuilder = new StringBuilder();
+                    using (Stream responseStream = response.GetResponseStream())
+                    using (StreamReader reader = new StreamReader(responseStream, Encoding.UTF8))
+                    {
+                        Console.WriteLine("+ Reading response stream...");
+                        
+                        // Read in chunks to avoid timeout
+                        char[] buffer = new char[4096];
+                        int bytesRead;
+                        int totalRead = 0;
+                        
+                        while ((bytesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            jsonBuilder.Append(buffer, 0, bytesRead);
+                            totalRead += bytesRead;
+                            
+                            if (totalRead % 8192 == 0)
+                            {
+                                Console.WriteLine("  Read " + totalRead + " bytes...");
+                            }
+                        }
+                        
+                        Console.WriteLine("+ Finished reading: " + totalRead + " bytes total");
+                    }
+                    
+                    string jsonResponse = jsonBuilder.ToString();
+                    Console.WriteLine("+ Response length: " + jsonResponse.Length + " characters");
+                    
+                    // Show first 400 chars for debugging
+                    if (jsonResponse.Length > 0)
+                    {
+                        string preview = jsonResponse.Substring(0, Math.Min 
